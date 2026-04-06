@@ -11,6 +11,7 @@ env/
 # Runtime data and logs
 data/
 *.log
+runs/
 
 # Tool caches
 .pytest_cache/

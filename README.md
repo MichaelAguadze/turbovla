@@ -1,6 +1,6 @@
 # TurboPi VLA Formalized
 
-TurboPi VLA Formalized is a beginner-friendly recording stack for the TurboPi Advanced Kit.
+TurboPi VLA Formalized is a beginner-friendly recording and training stack for the TurboPi Advanced Kit.
 
 It is split into two simple parts:
 
@@ -12,12 +12,15 @@ The most important setup idea is this: use the robot hotspot only for first acce
 ## What This Repo Includes
 
 - `robot_server/`: Flask server that runs on the TurboPi
-- `client/`: keyboard teleop and recording client that runs on the laptop
+- `client/`: keyboard teleop plus the launcher for VLA and CNN recording
+- `cnn_policy/`: public CNN training, evaluation, and driving entrypoints
 - `storage/`: raw backup writer, accepted-episode writer, and LeRobot exporter
 - `scripts/deploy_server.sh`: helper script to copy the server to the robot and start it
 - `scripts/export_lerobot.py`: converter from this repo's episode format to a LeRobot-compatible dataset
+- `scripts/upload_hf_session.py`: interactive Hugging Face uploader for one recorded session
+- `design/cnn_v1/overview.html`: visual architecture explainer for the CNN pipeline
 
-This repo does not currently ship a dashboard app or a training script. It focuses on data collection and clean export into a format that LeRobot tooling can consume.
+This repo does not currently ship a dashboard app or a VLA training stack. It focuses on clean data collection, LeRobot export, and a separate CNN baseline.
 
 ## Quick Start
 
@@ -115,7 +118,7 @@ If you want to test driving before recording, use teleop-only mode:
 python -m client.teleop --robot-ip <ROBOT_IP>
 ```
 
-Then, when you are ready to collect data, start the recording client:
+Then, when you are ready to collect data, start the launcher:
 
 Shared-Wi-Fi mode:
 
@@ -129,7 +132,64 @@ Hotspot-only quick test:
 python -m client
 ```
 
-### 8. Export to LeRobot format
+The launcher will then ask whether you want:
+
+- `CNN-based`
+- `VLA-based`
+
+Choose `VLA-based` for the original left/right/front/behind task flow. Choose `CNN-based` for the image-only CNN dataset flow.
+
+### 8. Train the CNN baseline
+
+Install the CNN training extras on the laptop:
+
+```bash
+pip install -r requirements-cnn.txt
+```
+
+Then train from the CNN episode root:
+
+```bash
+python -m cnn_policy.train \
+  --episodes-dir data/turbopi_cnn/episodes \
+  --run-dir runs/cnn_v1
+```
+
+After training starts, note the printed run directory, for example `runs/cnn_v1/run_YYYYMMDD_HHMMSS`. Use that concrete folder as `<RUN_DIR>` in the next commands.
+
+Evaluate a checkpoint:
+
+```bash
+python -m cnn_policy.eval \
+  --episodes-dir data/turbopi_cnn/episodes \
+  --checkpoint <RUN_DIR>/checkpoints/best.pt
+```
+
+Drive the robot from the trained CNN:
+
+```bash
+python -m cnn_policy.drive \
+  --robot-ip <ROBOT_IP> \
+  --checkpoint <RUN_DIR>/checkpoints/best.pt
+```
+
+### 9. Upload One Recorded Session To Hugging Face
+
+If you want a picker that shows the saved sessions, episode counts, and then uploads the selected one to a dataset repo named after that session:
+
+```bash
+python scripts/upload_hf_session.py
+```
+
+The uploader:
+
+- scans your local `episodes/` folders
+- shows session name, episode count, frame count, and directions
+- lets you pick one session
+- creates a Hugging Face dataset repo named after that session
+- uploads the accepted session folder, plus the matching `raw/` backup if you enable it
+
+### 10. Export to LeRobot format
 
 After you record accepted episodes, install the export extras:
 
@@ -166,7 +226,7 @@ python scripts/export_lerobot.py \
   --overwrite
 ```
 
-### 9. Inspect what was recorded
+### 11. Inspect what was recorded
 
 If you want to manually verify that left/right motion and rotation were actually captured:
 
@@ -195,6 +255,8 @@ After your first successful `nmcli` connection, you can make the setup persisten
 - [Getting Started](docs/getting-started.md)
 - [Wi-Fi and SSH Guide](docs/wifi-and-ssh.md)
 - [Data Collection Guide](docs/data-collection.md)
+- [CNN Dataset And Training Guide](docs/cnn.md)
+- [CNN V1 Overview](design/cnn_v1/overview.html)
 - [Troubleshooting](docs/troubleshooting.md)
 
 ## Repo Layout
@@ -202,12 +264,15 @@ After your first successful `nmcli` connection, you can make the setup persisten
 ```text
 .
 |-- client/
+|-- cnn_policy/
+|-- design/
 |-- robot_server/
 |-- scripts/
 |-- storage/
 |-- data/                    # created automatically when you record or export
 |-- requirements-laptop.txt
 |-- requirements-robot.txt
+|-- requirements-cnn.txt
 |-- requirements-export.txt
 `-- docs/
 ```
@@ -220,6 +285,10 @@ Laptop:
 python -m client
 python -m client.cli --robot-ip <ROBOT_IP>
 python -m client.teleop --robot-ip <ROBOT_IP>
+python -m cnn_policy.train --episodes-dir data/turbopi_cnn/episodes --run-dir runs/cnn_v1
+python -m cnn_policy.eval --episodes-dir data/turbopi_cnn/episodes --checkpoint <FILE>
+python -m cnn_policy.drive --robot-ip <ROBOT_IP> --checkpoint <FILE>
+python scripts/upload_hf_session.py
 python scripts/inspect_episode.py --episodes-dir data/turbopi_nav/episodes
 python scripts/export_lerobot.py --episodes-dir data/turbopi_nav/episodes --output-dir data/turbopi_nav/lerobot --repo-id <HF_DATASET_REPO>
 ```

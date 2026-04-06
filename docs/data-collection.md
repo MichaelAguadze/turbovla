@@ -2,21 +2,25 @@
 
 This repo records teleoperated episodes from a laptop while the TurboPi runs the robot server.
 
+If you are building the separate CNN workflow, see [CNN Dataset And Training Guide](cnn.md). That path uses its own dataset root and recording rules.
+
 ## What The Current Code Does
 
 The committed code supports:
 
 - keyboard teleoperation from the laptop
 - teleop-only driving without recording
+- launcher-based routing into `CNN-based` or `VLA-based` recording
 - live frame capture from the robot over HTTP
 - raw session backups
 - accepted-episode exports as MP4 plus Parquet
+- CNN training, evaluation, and laptop-first inference
 - LeRobot export from accepted episodes into `data/<dataset_name>/lerobot/`
 
 The committed code does not currently include:
 
 - a dashboard app
-- a training script
+- a VLA training stack
 - a dataset upload script beyond the optional `--push-to-hub` flag in the exporter
 
 ## Start A Recording Session
@@ -37,7 +41,7 @@ When you are ready to record:
 
 1. Make sure the robot server is running.
 2. Activate your laptop virtual environment.
-3. Start the client:
+3. Start the launcher:
 
 ```bash
 python -m client.cli --robot-ip <ROBOT_IP>
@@ -48,6 +52,11 @@ For AP-mode testing:
 ```bash
 python -m client
 ```
+
+After launch:
+
+- choose `VLA-based` for the current task list workflow
+- choose `CNN-based` for the CNN dataset workflow
 
 ## Controls
 
@@ -68,6 +77,8 @@ By default, the task list is:
 - `go behind the box`
 
 You can change these in `tasks.py`.
+
+The CNN path does not use this task list. It asks for `clockwise` or `counterclockwise` instead and treats one full lap of your chosen track as one accepted episode.
 
 ## What Gets Saved
 
@@ -161,6 +172,44 @@ python scripts/export_lerobot.py \
   --output-dir data/turbopi_nav/lerobot_session_20260402_114217 \
   --state-source shifted_action \
   --overwrite
+```
+
+## Train The CNN Baseline
+
+CNN data is intentionally separate from VLA data:
+
+```text
+data/turbopi_cnn/
+```
+
+Install the CNN extras:
+
+```bash
+pip install -r requirements-cnn.txt
+```
+
+Train:
+
+```bash
+python -m cnn_policy.train \
+  --episodes-dir data/turbopi_cnn/episodes \
+  --run-dir runs/cnn_v1
+```
+
+Evaluate:
+
+```bash
+python -m cnn_policy.eval \
+  --episodes-dir data/turbopi_cnn/episodes \
+  --checkpoint <RUN_DIR>/checkpoints/best.pt
+```
+
+Drive:
+
+```bash
+python -m cnn_policy.drive \
+  --robot-ip <ROBOT_IP> \
+  --checkpoint <RUN_DIR>/checkpoints/best.pt
 ```
 
 ## Inspect Recorded Actions

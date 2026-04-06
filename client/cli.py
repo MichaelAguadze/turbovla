@@ -1,34 +1,19 @@
-"""Entry point for the recording client.
+"""Top-level client launcher for VLA and CNN recording modes."""
 
-Usage:
-    python -m client
-    python -m client.cli [options]
+from __future__ import annotations
 
-    --robot-ip       Robot IP address (default: 192.168.149.1)
-    --robot-port     Robot server port (default: 8080)
-    --dataset        Dataset name (default: turbopi_nav)
-    --repo-id        Dataset repo placeholder (default: <HF_DATASET_REPO>)
-    --fps            Recording FPS (default: 10)
-    --episodes       Number of episodes to record (default: 50)
-    --episode-time   Max seconds per episode (default: 30)
-    --speed          Initial teleop speed (default: 50)
-    --data-dir       Runtime data directory (default: data)
-"""
 import argparse
-from pathlib import Path
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the CLI parser.
-
-    Imports for the recording stack are intentionally deferred until after
-    argument parsing so `python -m client --help` works even before optional
-    runtime dependencies are installed.
-    """
-    parser = argparse.ArgumentParser(description="TurboPi VLA Recording Client")
+    """Build the CLI parser for the launcher."""
+    parser = argparse.ArgumentParser(description="TurboPi Client Launcher")
     parser.add_argument("--robot-ip", default="192.168.149.1")
     parser.add_argument("--robot-port", type=int, default=8080)
-    parser.add_argument("--dataset", default="turbopi_nav")
+    parser.add_argument("--dataset", default="turbopi_nav",
+                        help="Dataset name for the VLA recorder")
+    parser.add_argument("--cnn-dataset", default="turbopi_cnn",
+                        help="Dataset name for the CNN recorder")
     parser.add_argument("--repo-id", default="<HF_DATASET_REPO>")
     parser.add_argument("--fps", type=int, default=10)
     parser.add_argument("--episodes", type=int, default=50)
@@ -36,34 +21,78 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--speed", type=float, default=50.0)
     parser.add_argument("--data-dir", default="data")
     parser.add_argument("--tasks", nargs="+", default=None,
-                        help="Custom task list (overrides defaults)")
+                        help="Custom VLA task list (overrides defaults)")
+    parser.add_argument("--mode", choices=["launcher", "cnn", "vla"], default="launcher")
+    parser.add_argument("--cnn-intent", choices=["language", "no-language"], default=None)
+    parser.add_argument("--cnn-task", default=None,
+                        help="Internal CNN task selector; public mode uses dataset-recording")
     return parser
 
 
-def main():
+def _prompt_menu(title: str, options: list[str]) -> int | None:
+    """Prompt the user to select one option from a numbered list."""
+    print(f"\n  {title}:")
+    for index, label in enumerate(options):
+        print(f"    [{index}] {label}")
+    print()
+
+    while True:
+        try:
+            choice = input("  Select number: ").strip()
+        except EOFError:
+            return None
+
+        if choice == "":
+            print("  Enter a number.")
+            continue
+
+        try:
+            index = int(choice)
+        except ValueError:
+            print("  Enter a number.")
+            continue
+
+        if 0 <= index < len(options):
+            return index
+
+        print(f"  Invalid. Choose 0-{len(options) - 1}")
+
+def main() -> None:
+    """Run the top-level launcher."""
     parser = build_parser()
     args = parser.parse_args()
 
-    from config import RecordingConfig
-    from tasks import TaskManager, DEFAULT_TASKS
-    from .recording_session import RecordingSession
+    if args.mode == "vla":
+        from .vla_cli import run_from_args as run_vla
 
-    config = RecordingConfig(
-        robot_ip=args.robot_ip,
-        robot_port=args.robot_port,
-        dataset_name=args.dataset,
-        repo_id=args.repo_id,
-        fps=args.fps,
-        num_episodes=args.episodes,
-        episode_time_s=args.episode_time,
-        teleop_speed=args.speed,
-        data_dir=Path(args.data_dir),
-    )
+        run_vla(args)
+        return
 
-    tasks = TaskManager(args.tasks if args.tasks else DEFAULT_TASKS)
+    if args.mode == "cnn":
+        from .cnn_cli import run_from_args as run_cnn
 
-    session = RecordingSession(config, tasks)
-    session.run()
+        run_cnn(args, _prompt_menu)
+        return
+
+    print()
+    print("=" * 50)
+    print("  TurboPi Client Launcher")
+    print("=" * 50)
+
+    selection = _prompt_menu("Recording Modes", ["CNN-based", "VLA-based"])
+    if selection is None:
+        return
+
+    if selection == 0:
+        from .cnn_cli import run_from_args as run_cnn
+
+        run_cnn(args, _prompt_menu)
+        return
+
+    from .vla_cli import run_from_args as run_vla
+
+    run_vla(args)
+    return
 
 
 if __name__ == "__main__":

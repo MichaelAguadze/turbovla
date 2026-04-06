@@ -75,6 +75,15 @@ Check these first:
 
 The recorder now skips frames when motor commands fail instead of silently saving mismatched labels, but unstable Wi-Fi can still reduce collection quality.
 
+## The CNN trainer says it is using only one session
+
+That warning means training can still run, but true validation is skipped because there is only one recording session available.
+
+Fix:
+
+- collect at least one more `session_YYYYMMDD_HHMMSS` under `data/turbopi_cnn/episodes/`
+- then train from the full CNN episodes root instead of one specific session folder
+
 ## LeRobot export fails
 
 Check these common causes:
