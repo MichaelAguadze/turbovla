@@ -61,7 +61,7 @@ Once you are inside the robot:
 
 ```bash
 nmcli dev wifi list
-sudo nmcli device wifi connect "<SSID>" password "<PASSWORD>"
+sudo nmcli device wifi connect "Vizuara" password "vizuara112358"
 ```
 
 Your SSH session will usually disconnect right away. That is normal because the robot is leaving hotspot mode and joining the shared network.
