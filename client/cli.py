@@ -9,7 +9,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the CLI parser for the launcher."""
     parser = argparse.ArgumentParser(description="TurboPi Client Launcher")
     parser.add_argument("--robot-ip", default="192.168.149.1")
-    parser.add_argument("--robot-port", type=int, default=8080)
+    parser.add_argument("--robot-port", type=int, default=8081)
     parser.add_argument("--dataset", default="turbopi_nav",
                         help="Dataset name for the VLA recorder")
     parser.add_argument("--cnn-dataset", default="turbopi_cnn",

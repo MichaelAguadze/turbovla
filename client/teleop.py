@@ -14,7 +14,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the CLI parser for teleop-only mode."""
     parser = argparse.ArgumentParser(description="TurboPi teleop-only client")
     parser.add_argument("--robot-ip", default="192.168.149.1")
-    parser.add_argument("--robot-port", type=int, default=8080)
+    parser.add_argument("--robot-port", type=int, default=8081)
     parser.add_argument("--speed", type=float, default=50.0,
                         help="Initial teleop speed in duty units")
     parser.add_argument("--max-duty", type=float, default=80.0,

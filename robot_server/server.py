@@ -19,6 +19,8 @@ Endpoints:
 Usage:
     python3 server.py [--port 8080]
 """
+from __future__ import annotations
+
 import os
 import sys
 import time
@@ -310,7 +312,7 @@ def create_app(mc: MotorController, camera: CameraCapture,
 # --- Main ---
 
 def main():
-    parser = argparse.ArgumentParser(description="TurboPi Robot Server")
+    parser = argparse.ArgumentParser(description="Leorover Robot Server")
     parser.add_argument('--port', type=int, default=8080, help='HTTP port')
     parser.add_argument('--camera', type=int, default=0, help='Camera device index')
     parser.add_argument('--watchdog-timeout', type=float, default=0.5,
@@ -391,7 +393,7 @@ def main():
 
     print()
     print("┌──────────────────────────────────────────┐")
-    print("│  TurboPi Robot Server                    │")
+    print("│  Leorover Robot Server                    │")
     print("├──────────────────────────────────────────┤")
     for ip in ip_addrs:
         print(f"│  http://{ip}:{args.port:<5}                  │")
